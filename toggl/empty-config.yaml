@@ -1,0 +1,17 @@
+##
+## COPY THIS FILE TO config.yaml AND EDIT THERE
+##
+
+# Example Toggl Report Config
+email:      EMAIL_HERE          # Toggl Login
+api_key:    API_KEY_HERE        # Found in profile on Toggl website
+workspace:  WORKSPACE_ID_HERE   # Found in workspace on Toggl website
+
+# Email Config
+recipients:       EMAIL1;EMAIL2               # List of recipient emails
+from:             NAME_HERE                   # Name of sender
+to:               NAME_HERE                   # Name of recipient
+server:           localhost                   # Server (smtp.gmail.com:587)
+login:            LOGIN_NAME                  # Probably your email
+# Generated from google https://security.google.com/settings/security/apppasswords
+app_password:     PASSWORD
