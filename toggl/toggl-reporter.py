@@ -86,10 +86,7 @@ def get_toggl_details_data():
         for nextPage in range(2, remainingPages + 2):
             payload['page'] = nextPage
             response = get_toggl_details_response(payload)
-
-    payload['page'] = 2
-    response = requests.get(GET_DETAILS, params=payload, headers=headers)
-    togglData += response.json()['data']
+            togglData += response.json()['data']
 
     return togglData
 
