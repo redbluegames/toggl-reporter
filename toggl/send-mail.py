@@ -21,8 +21,8 @@ msg = MIMEText(fp.read())
 fp.close()
 
 me = config['email']
-you = config['recipients']
-msg['Subject'] = 'The contents of %s' % "report.txt"
+you = config['recipients'].split(';')
+msg['Subject'] = 'Latest Toggl Report'
 msg['From'] = config['from']
 msg['To'] = config['to']
 
