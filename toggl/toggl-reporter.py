@@ -54,7 +54,6 @@ def main(argv):
 
     # print "\nDaily Report..."
     # print_daily_report(response.json())
-    # print("\nTimesheet Report for {0} to {1}").format(since, until)
     run_report(togglData)
     outf.close
 
@@ -169,6 +168,7 @@ def get_billable_by_project(json):
 
 def write_billable_time_to_file(projectTimes, out):
     output = '<html>'
+    output += "\n<h3>Timesheet Report for {0} to {1}</h3>".format(since, until)
     for project in projectTimes:
         # Calculate our totals
         millisToMinsToHours = 1000.0 * 60 * 60
