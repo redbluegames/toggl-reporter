@@ -3,12 +3,13 @@
 ##
 
 # Example Toggl Report Config
-email:        EMAIL_HERE          # Toggl Login
+user:        EMAIL_HERE          # Toggl Login
 api_key:      API_KEY_HERE        # Found in profile on Toggl website
 workspace:    WORKSPACE_ID_HERE   # Found in workspace on Toggl website
 report_file:  report.html         # No need to change
 
 # Email Config
+email:            lucas.rowe@redbluegames.com         # Sending email address
 recipients:       EMAIL1;EMAIL2               # List of recipient emails
 from:             NAME_HERE                   # Name of sender
 to:               NAME_HERE                   # Name of recipient

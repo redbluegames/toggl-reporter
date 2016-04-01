@@ -6,6 +6,7 @@ from __future__ import print_function
 from datetime import date, datetime
 import getopt
 import iso8601
+import math
 import requests
 import sys
 import yaml
@@ -17,7 +18,7 @@ f.close()
 outf = open(config['report_file'], 'w+')
 
 # Parameters for Toggl Request
-email = config['email']
+user = config['user']
 workspace = config['workspace']
 user_id = ''
 since = ''
@@ -74,7 +75,7 @@ def print_usage():
 def get_toggl_details_data(user_id, since, until):
     # Set up our payload
     payload = {
-        'user_agent': email,
+        'user_agent': user,
         'workspace_id': workspace,
         'user_ids': user_id,
         'since': since,
@@ -89,8 +90,8 @@ def get_toggl_details_data(user_id, since, until):
 
     isMoreThanOnePage = json['total_count'] > json['per_page']
     if isMoreThanOnePage:
-        remainingPages = json['total_count'] / json['per_page']
-        for nextPage in range(2, remainingPages + 2):
+        totalPages = math.ceil(json['total_count'] / json['per_page'])
+        for nextPage in range(2, totalPages+1):
             payload['page'] = nextPage
             response = get_toggl_details_response(payload)
             togglData += response.json()['data']
@@ -102,11 +103,11 @@ def get_toggl_details_response(payload):
     response = requests.get(GET_DETAILS, params=payload, headers=headers)
     if response.status_code == HTTP_OK:
         print("Toggl Response OK")
-        print("Running report for " + email)
+        print("Running report for user: " + user)
     else:
         print("Error running API Request")
+        print("Status_code: " + str(response.status_code))
         print(response.text)
-        return
     return response
 
 

@@ -15,7 +15,7 @@ f.close()
 
 # Open a plain text file for reading.  For this example, assume that
 # the text file contains only ASCII characters.
-fp = open(config['report_file'], 'rb')
+fp = open(config['report_file'], 'r')
 # Create a text/plain message
 msg = MIMEText(fp.read(), 'html')
 fp.close()
