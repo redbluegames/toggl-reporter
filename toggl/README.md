@@ -23,11 +23,12 @@ Modify the new file to include your Toggl and Gmail credentials.
 
 # Usage
 
-You can run this tool from the command line.
+You can run this tool from the command line. Many parameters are obtained
+from the config file, so make sure you've set that up.
 
 To generate a report...
 
-    python toggl-reporter.py <user_id> <since> <until> > report.txt
+    python toggl-reporter.py <user_id> <since> <until>
 
 To send a report via email...
 

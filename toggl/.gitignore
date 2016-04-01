@@ -1,5 +1,6 @@
 # Additional ignores
 config.yaml
+report.html
 
 ### ---- Github Generated .gitignore for Python
 

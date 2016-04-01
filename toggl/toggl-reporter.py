@@ -2,6 +2,7 @@
 # toggl-reporter.py
 # Helper script to run toggl reports
 
+from __future__ import print_function
 from datetime import date, datetime
 import getopt
 import iso8601
@@ -13,6 +14,7 @@ import yaml
 f = open('config.yaml')
 config = yaml.safe_load(f)
 f.close()
+outf = open(config['report_file'], 'w+')
 
 # Parameters for Toggl Request
 email = config['email']
@@ -37,26 +39,6 @@ def main(argv):
         print_usage()
         sys.exit(2)
 
-    togglData = get_toggl_details_data()
-    # print "Validating entries..."
-    # validate_entries(response.json())
-
-    # print "\nDaily Report..."
-    # print_daily_report(response.json())
-    print "\nTimesheet Report for {0} to {1}".format(since, until)
-    run_report(togglData)
-
-
-def print_usage():
-    print "Usage: "
-    print "py toggl-reporter.py [user_ids] [start_time] [end_time]"
-    print "  [user_id] user id obtained from toggl"
-    print "  [start_time] beginning of report range in YYYY-MM-DD format"
-    print "  [end_time] beginning of report range in YYYY-MM-DD format"
-    print "\nex: python toggl-reporter.py 235725,572628 2016-03-01 2016-03-15"
-
-
-def get_toggl_details_data():
     # Set our request params
     global user_id
     user_id = sys.argv[1]
@@ -65,6 +47,28 @@ def get_toggl_details_data():
     global until
     until = sys.argv[3]
 
+    togglData = get_toggl_details_data(user_id, since, until)
+
+    # print "Validating entries..."
+    # validate_entries(response.json())
+
+    # print "\nDaily Report..."
+    # print_daily_report(response.json())
+    # print("\nTimesheet Report for {0} to {1}").format(since, until)
+    run_report(togglData)
+    outf.close
+
+
+def print_usage():
+    print("Usage: ")
+    print("py toggl-reporter.py [user_ids] [start_time] [end_time]")
+    print("  [user_id] user id obtained from toggl")
+    print("  [start_time] beginning of report range in YYYY-MM-DD format")
+    print("  [end_time] beginning of report range in YYYY-MM-DD format")
+    print("\nex: python toggl-reporter.py 235725,572628 2016-03-01 2016-03-15")
+
+
+def get_toggl_details_data(user_id, since, until):
     # Set up our payload
     payload = {
         'user_agent': email,
@@ -94,18 +98,18 @@ def get_toggl_details_data():
 def get_toggl_details_response(payload):
     response = requests.get(GET_DETAILS, params=payload, headers=headers)
     if response.status_code == HTTP_OK:
-        print "Toggl Response OK"
-        print "Running report for " + email
+        print("Toggl Response OK")
+        print("Running report for " + email)
     else:
-        print "Error running API Request"
-        print response.text
+        print("Error running API Request")
+        print(response.text)
         return
     return response
 
 
 def run_report(response):
     billableTime = get_billable_by_project(response)
-    print_billable_time(billableTime)
+    write_billable_time_to_file(billableTime, outf)
 
 
 def validate_entries(togglData):
@@ -126,8 +130,8 @@ def validate_entries(togglData):
             elif startTimeOverlaps or endTimeOverlaps:
                 overlapMsg = ("Overlapping time entries found: " +
                               "\n{0}\nand\n{1}")
-                print overlapMsg.format(get_short_summary(entry),
-                                        get_short_summary(otherentry))
+                print(overlapMsg.format(get_short_summary(entry),
+                                        get_short_summary(otherentry)))
 
 
 def print_daily_report(togglData):
@@ -138,8 +142,8 @@ def print_daily_report(togglData):
             earliestTime = iso8601.parse_date(entry['start'])
             earliestEntry = entry
 
-    print "Clocked in at {0}".format(earliestTime)
-    print "Entry: {0}".format(earliestEntry['description'])
+    print("Clocked in at {0}".format(earliestTime))
+    print("Entry: {0}".format(earliestEntry['description']))
 
 
 def get_billable_by_project(json):
@@ -163,16 +167,24 @@ def get_billable_by_project(json):
     return projectTimes
 
 
-def print_billable_time(projectTimes):
+def write_billable_time_to_file(projectTimes, out):
+    output = '<html>'
     for project in projectTimes:
-        print "\n" + project
+        # Calculate our totals
         millisToMinsToHours = 1000.0 * 60 * 60
         totalHours = projectTimes[project][0] / millisToMinsToHours
-        print "  Total: {:.2f}h".format(totalHours)
         billableHours = projectTimes[project][1] / millisToMinsToHours
-        print "  Billable: {:.2f}h".format(billableHours)
         discountedHours = projectTimes[project][2] / millisToMinsToHours
-        print "  Discounted: {:.2f}h".format(discountedHours)
+
+        # Write project name and totals
+        output += "\n<br/><b>{0}</b><br/>".format(project)
+        output += "\n&nbsp;&nbsp;Total: {:.2f}h<br/>".format(totalHours)
+        output += ("\n&nbsp;&nbsp;<b style='color:blue;'>" +
+                   "Billable: {:.2f}h</b><br/>".format(billableHours))
+        output += ("\n&nbsp;&nbsp;Discounted: {:.2f}h<br/>".format(
+                   discountedHours))
+
+    print(output + "\n</html>", file=out)
 
 
 def get_time(datetimeToConvert):
