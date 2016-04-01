@@ -22,12 +22,13 @@ workspace = config['workspace']
 user_id = ''
 since = ''
 until = ''
-
 api_key = config['api_key']
 headers = {'Authorization': api_key}
 
 # API Endpoints
 GET_DETAILS = 'https://toggl.com/reports/api/v2/details'
+SUMMARY_URL = ("https://www.toggl.com/app/reports/summary/" +
+               "{0}/from/{1}/to/{2}/users/{3}/billable/both")
 
 # "Consts"
 HTTP_OK = 200
@@ -46,6 +47,9 @@ def main(argv):
     since = sys.argv[2]
     global until
     until = sys.argv[3]
+
+    global summary_url
+    summary_url = SUMMARY_URL.format(workspace, since, until, user_id)
 
     togglData = get_toggl_details_data(user_id, since, until)
 
@@ -168,7 +172,9 @@ def get_billable_by_project(json):
 
 def write_billable_time_to_file(projectTimes, out):
     output = '<html>'
-    output += "\n<h3>Timesheet Report for {0} to {1}</h3>".format(since, until)
+    output += "\n<h2>Timesheet Report for {0} to {1}</h2>".format(since, until)
+    output += ("A similar report for this date range can be viewed " +
+               "<a href='{0}'>here</a>.<br/><br/>".format(summary_url))
     for project in projectTimes:
         # Calculate our totals
         millisToMinsToHours = 1000.0 * 60 * 60
