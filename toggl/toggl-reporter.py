@@ -20,7 +20,7 @@ outf = open(config['report_file'], 'w+')
 # Parameters for Toggl Request
 user = config['user']
 workspace = config['workspace']
-user_id = ''
+user_ids = ''
 since = ''
 until = ''
 api_key = config['api_key']
@@ -42,42 +42,43 @@ def main(argv):
         sys.exit(2)
 
     # Set our request params
-    global user_id
-    user_id = sys.argv[1]
+    global user_ids
+    user_ids = sys.argv[1]
     global since
     since = sys.argv[2]
     global until
     until = sys.argv[3]
 
     global summary_url
-    summary_url = SUMMARY_URL.format(workspace, since, until, user_id)
+    summary_url = SUMMARY_URL.format(workspace, since, until, user_ids)
 
-    togglData = get_toggl_details_data(user_id, since, until)
+    togglData = get_toggl_details_data(user_ids, since, until)
+
+    run_report(togglData, user_ids)
 
     # print "Validating entries..."
     # validate_entries(response.json())
 
     # print "\nDaily Report..."
     # print_daily_report(response.json())
-    run_report(togglData)
     outf.close
 
 
 def print_usage():
     print("Usage: ")
     print("py toggl-reporter.py [user_ids] [start_time] [end_time]")
-    print("  [user_id] user id obtained from toggl")
+    print("  [user_ids] user id obtained from toggl")
     print("  [start_time] beginning of report range in YYYY-MM-DD format")
     print("  [end_time] beginning of report range in YYYY-MM-DD format")
     print("\nex: python toggl-reporter.py 235725,572628 2016-03-01 2016-03-15")
 
 
-def get_toggl_details_data(user_id, since, until):
+def get_toggl_details_data(user_ids, since, until):
     # Set up our payload
     payload = {
         'user_agent': user,
         'workspace_id': workspace,
-        'user_ids': user_id,
+        'user_ids': user_ids,
         'since': since,
         'until': until,
         'page': 1
@@ -90,7 +91,7 @@ def get_toggl_details_data(user_id, since, until):
 
     isMoreThanOnePage = json['total_count'] > json['per_page']
     if isMoreThanOnePage:
-        totalPages = math.ceil(json['total_count'] / json['per_page'])
+        totalPages = json['total_count'] / json['per_page'] +1
         for nextPage in range(2, totalPages+1):
             payload['page'] = nextPage
             response = get_toggl_details_response(payload)
@@ -111,9 +112,26 @@ def get_toggl_details_response(payload):
     return response
 
 
-def run_report(response):
-    billableTime = get_billable_by_project(response)
-    write_billable_time_to_file(billableTime, outf)
+def run_report(response, user_ids):
+    output = "<html>"
+    output += "\n<h2>Summary Timesheet Report for All Employees<br/>"
+    output += "\nfrom {0} to {1}</h2>".format(since, until)
+    output += ("\nA similar report for this date range can be viewed " +
+               "<a href='{0}'>here</a>.<br/><br/>".format(summary_url))
+    print(output, file=outf)
+
+    # First print out All Employees report
+    billableTime = get_billable_by_project(response, user_ids)
+    write_billable_time_to_file(billableTime, "All Employee", outf)
+
+    print("<br/><br/><br/>Additional reports below...<br/><br/>", file=outf)
+
+    users = user_ids.split(',')
+    for user in users:
+        billableTime = get_billable_by_project(response, user)
+        write_billable_time_to_file(billableTime, user, outf)
+
+    print("</html>", file=outf)
 
 
 def validate_entries(togglData):
@@ -150,9 +168,13 @@ def print_daily_report(togglData):
     print("Entry: {0}".format(earliestEntry['description']))
 
 
-def get_billable_by_project(json):
+def get_billable_by_project(json, user_id):
     projectTimes = {}
     for entry in json:
+        # Short-circuit entries for other users
+        if str(entry['uid']) not in user_id:
+            continue
+
         entryProject = entry['project']
 
         # Add our time to the correct entry in the project
@@ -171,11 +193,12 @@ def get_billable_by_project(json):
     return projectTimes
 
 
-def write_billable_time_to_file(projectTimes, out):
-    output = '<html>'
-    output += "\n<h2>Timesheet Report for {0} to {1}</h2>".format(since, until)
-    output += ("A similar report for this date range can be viewed " +
-               "<a href='{0}'>here</a>.<br/><br/>".format(summary_url))
+def write_billable_time_to_file(projectTimes, name, out):
+    # Print our header
+    output = "\n____________________________ <br/>"
+    output += "\n<h3>Timesheet Report for {0} ({1}-{2})</h3>".format(
+             name, since, until)
+
     for project in projectTimes:
         # Calculate our totals
         millisToMinsToHours = 1000.0 * 60 * 60
@@ -191,7 +214,7 @@ def write_billable_time_to_file(projectTimes, out):
         output += ("\n&nbsp;&nbsp;Discounted: {:.2f}h<br/>".format(
                    discountedHours))
 
-    print(output + "\n</html>", file=out)
+    print(output, file=out)
 
 
 def get_time(datetimeToConvert):
