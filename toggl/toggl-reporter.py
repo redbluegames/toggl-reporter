@@ -34,6 +34,9 @@ SUMMARY_URL = ("https://www.toggl.com/app/reports/summary/" +
 # "Consts"
 HTTP_OK = 200
 BILLABLE_TAG = "Billable"
+ALL_EMPS = "All Employees"
+USERIDS_NAMES = {"1947788": "Kevin", "219293": "Lucas",
+                 "129932": "Edward", ALL_EMPS: "All Employees"}
 
 
 def main(argv):
@@ -91,7 +94,7 @@ def get_toggl_details_data(user_ids, since, until):
 
     isMoreThanOnePage = json['total_count'] > json['per_page']
     if isMoreThanOnePage:
-        totalPages = json['total_count'] / json['per_page'] +1
+        totalPages = json['total_count'] / json['per_page'] + 1
         for nextPage in range(2, totalPages+1):
             payload['page'] = nextPage
             response = get_toggl_details_response(payload)
@@ -122,7 +125,7 @@ def run_report(response, user_ids):
 
     # First print out All Employees report
     billableTime = get_billable_by_project(response, user_ids)
-    write_billable_time_to_file(billableTime, "All Employee", outf)
+    write_billable_time_to_file(billableTime, ALL_EMPS, outf)
 
     print("<br/><br/><br/>Additional reports below...<br/><br/>", file=outf)
 
@@ -193,11 +196,11 @@ def get_billable_by_project(json, user_id):
     return projectTimes
 
 
-def write_billable_time_to_file(projectTimes, name, out):
+def write_billable_time_to_file(projectTimes, user_id, out):
     # Print our header
     output = "\n____________________________ <br/>"
     output += "\n<h3>Timesheet Report for {0} ({1}-{2})</h3>".format(
-             name, since, until)
+             lookup_name(user_id), since, until)
 
     for project in projectTimes:
         # Calculate our totals
@@ -215,6 +218,14 @@ def write_billable_time_to_file(projectTimes, name, out):
                    discountedHours))
 
     print(output, file=out)
+
+
+def lookup_name(user_id):
+    name = "Unknown ({0})".format(str(user_id))
+    for user in USERIDS_NAMES:
+        if user == user_id:
+            name = USERIDS_NAMES[user]
+    return name
 
 
 def get_time(datetimeToConvert):
