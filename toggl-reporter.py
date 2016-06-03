@@ -89,7 +89,7 @@ def get_toggl_details_data():
 
     isMoreThanOnePage = json['total_count'] > json['per_page']
     if isMoreThanOnePage:
-        totalPages = json['total_count'] / json['per_page'] + 1
+        totalPages = int(json['total_count'] / json['per_page']) + 1
         for nextPage in range(2, totalPages+1):
             payload['page'] = nextPage
             response = get_toggl_details_response(payload, nextPage)
