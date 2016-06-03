@@ -4,9 +4,13 @@
 
 # Example Toggl Report Config
 user:        EMAIL_HERE          # Toggl Login
-api_key:      API_KEY_HERE        # Found in profile on Toggl website
-workspace:    WORKSPACE_ID_HERE   # Found in workspace on Toggl website
-report_file:  report.html         # No need to change
+api_key:      API_KEY_HERE       # Found in profile on Toggl website
+workspace:    WORKSPACE_ID_HERE  # Found in workspace on Toggl website
+report_file:  report.html        # No need to change
+reportees:                       # List all the users in form "81489: John"
+  id: name
+  id: name
+  id: name
 
 # Email Config
 email:            YOUR_EMAIL                  # Sending email address
