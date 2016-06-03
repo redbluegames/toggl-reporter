@@ -130,7 +130,8 @@ def generate_report(response):
 
     reportees = config['reportees']
     for user in reportees:
-        billableTime = get_billable_by_project(response, user)
+        userDict = {user}
+        billableTime = get_billable_by_project(response, userDict)
         write_billable_time_to_file(billableTime, reportees[user], outf)
 
     print("</html>", file=outf)
@@ -170,12 +171,13 @@ def print_daily_report(togglData):
     print("Entry: {0}".format(earliestEntry['description']))
 
 
-def get_billable_by_project(json, user_id):
+def get_billable_by_project(json, user_ids):
     projectTimes = {}
     for entry in json:
         # Short-circuit entries for other users
-        if entry['uid'] != user_id:
-            continue
+        for user in user_ids:
+            if entry['uid'] != user:
+                continue
 
         entryProject = entry['project']
 
