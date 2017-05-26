@@ -1,9 +1,10 @@
 #!/usr/local/bin/python
 # toggl-reporter.py
-# Helper script to run toggl reports
+# Helper script to generate toggl reports
 
 from __future__ import print_function
 from datetime import date, datetime
+from requests.auth import HTTPBasicAuth
 import getopt
 import iso8601
 import math
@@ -17,14 +18,14 @@ config = yaml.safe_load(f)
 f.close()
 outf = open(config['report_file'], 'w+')
 
-# Parameters for Toggl Request
+# Parameters for Toggl Request (from config file)
 user = config['user']
 workspace = config['workspace']
-user_ids = ''
+user_ids = config['reportees'].keys()
 since = ''
 until = ''
-api_key = config['api_key']
-headers = {'Authorization': api_key}
+api_token = config['api_token']
+headers = {}
 
 # API Endpoints
 GET_DETAILS = 'https://toggl.com/reports/api/v2/details'
@@ -35,29 +36,35 @@ SUMMARY_URL = ("https://www.toggl.com/app/reports/summary/" +
 HTTP_OK = 200
 BILLABLE_TAG = "Billable"
 ALL_EMPS = "All Employees"
-USERIDS_NAMES = {"1947788": "Kevin", "219293": "Lucas",
-                 "129932": "Edward", ALL_EMPS: "All Employees"}
 
 
 def main(argv):
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 3:
         print_usage()
         sys.exit(2)
 
     # Set our request params
-    global user_ids
-    user_ids = sys.argv[1]
     global since
-    since = sys.argv[2]
+    since = sys.argv[1]
     global until
-    until = sys.argv[3]
+    until = sys.argv[2]
+
+    global payload
+    payload = {
+        'user_agent': user,
+        'workspace_id': workspace,
+        'user_ids': ','.join(str(id) for id in user_ids),
+        'since': since,
+        'until': until,
+        'page': 1
+        }
 
     global summary_url
     summary_url = SUMMARY_URL.format(workspace, since, until, user_ids)
 
-    togglData = get_toggl_details_data(user_ids, since, until)
+    togglData = get_toggl_details_data()
 
-    run_report(togglData, user_ids)
+    generate_report(togglData)
 
     # print "Validating entries..."
     # validate_entries(response.json())
@@ -69,45 +76,40 @@ def main(argv):
 
 def print_usage():
     print("Usage: ")
-    print("py toggl-reporter.py [user_ids] [start_time] [end_time]")
-    print("  [user_ids] user id obtained from toggl")
+    print("py toggl-reporter.py [start_time] [end_time]")
     print("  [start_time] beginning of report range in YYYY-MM-DD format")
     print("  [end_time] beginning of report range in YYYY-MM-DD format")
     print("\nex: python toggl-reporter.py 235725,572628 2016-03-01 2016-03-15")
 
 
-def get_toggl_details_data(user_ids, since, until):
-    # Set up our payload
-    payload = {
-        'user_agent': user,
-        'workspace_id': workspace,
-        'user_ids': user_ids,
-        'since': since,
-        'until': until,
-        'page': 1
-        }
-
+def get_toggl_details_data():
     # Get first page
-    response = get_toggl_details_response(payload)
+    response = get_toggl_details_response(payload, 1)
     json = response.json()
     togglData = json['data']
 
     isMoreThanOnePage = json['total_count'] > json['per_page']
     if isMoreThanOnePage:
-        totalPages = json['total_count'] / json['per_page'] + 1
+        totalPages = int(json['total_count'] / json['per_page']) + 1
         for nextPage in range(2, totalPages+1):
             payload['page'] = nextPage
-            response = get_toggl_details_response(payload)
+            response = get_toggl_details_response(payload, nextPage)
             togglData += response.json()['data']
 
     return togglData
 
 
-def get_toggl_details_response(payload):
-    response = requests.get(GET_DETAILS, params=payload, headers=headers)
+def get_toggl_details_response(payload, pageNum):
+    response = requests.get(GET_DETAILS, auth=(api_token, 'api_token'), params=payload, headers=headers)
+    print("Sending GET Request to: " + GET_DETAILS)
+    print("Headers:" + str(headers))
+    print("Payload: " + str(payload))
+    print("...")
+    msg = "Getting report page {0} for user(s): {1}"
+    print(msg.format(pageNum, payload['user_ids']))
+
     if response.status_code == HTTP_OK:
         print("Toggl Response OK")
-        print("Running report for user: " + user)
     else:
         print("Error running API Request")
         print("Status_code: " + str(response.status_code))
@@ -115,7 +117,9 @@ def get_toggl_details_response(payload):
     return response
 
 
-def run_report(response, user_ids):
+def generate_report(response):
+    summary_url = SUMMARY_URL.format(workspace, since,
+                                     until, payload['user_ids'])
     output = "<html>"
     output += "\n<h2>Summary Timesheet Report for All Employees<br/>"
     output += "\nfrom {0} to {1}</h2>".format(since, until)
@@ -129,10 +133,11 @@ def run_report(response, user_ids):
 
     print("<br/><br/><br/>Additional reports below...<br/><br/>", file=outf)
 
-    users = user_ids.split(',')
-    for user in users:
-        billableTime = get_billable_by_project(response, user)
-        write_billable_time_to_file(billableTime, user, outf)
+    reportees = config['reportees']
+    for user in reportees:
+        userDict = {user}
+        billableTime = get_billable_by_project(response, userDict)
+        write_billable_time_to_file(billableTime, reportees[user], outf)
 
     print("</html>", file=outf)
 
@@ -171,12 +176,13 @@ def print_daily_report(togglData):
     print("Entry: {0}".format(earliestEntry['description']))
 
 
-def get_billable_by_project(json, user_id):
+def get_billable_by_project(json, user_ids):
     projectTimes = {}
     for entry in json:
         # Short-circuit entries for other users
-        if str(entry['uid']) not in user_id:
-            continue
+        for user in user_ids:
+            if entry['uid'] != user:
+                continue
 
         entryProject = entry['project']
 
@@ -196,11 +202,11 @@ def get_billable_by_project(json, user_id):
     return projectTimes
 
 
-def write_billable_time_to_file(projectTimes, user_id, out):
+def write_billable_time_to_file(projectTimes, reporteeName, out):
     # Print our header
     output = "\n____________________________ <br/>"
     output += "\n<h3>Timesheet Report for {0} ({1}-{2})</h3>".format(
-             lookup_name(user_id), since, until)
+             reporteeName, since, until)
 
     for project in projectTimes:
         # Calculate our totals
@@ -218,14 +224,6 @@ def write_billable_time_to_file(projectTimes, user_id, out):
                    discountedHours))
 
     print(output, file=out)
-
-
-def lookup_name(user_id):
-    name = "Unknown ({0})".format(str(user_id))
-    for user in USERIDS_NAMES:
-        if user == user_id:
-            name = USERIDS_NAMES[user]
-    return name
 
 
 def get_time(datetimeToConvert):
