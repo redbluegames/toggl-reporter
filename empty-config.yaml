@@ -4,6 +4,7 @@
 
 # Example Toggl Report Config
 user:        EMAIL_HERE          # Toggl Login
+# https://github.com/toggl/toggl_api_docs/blob/master/chapters/authentication.md
 api_key:      API_KEY_HERE       # Found in profile on Toggl website
 workspace:    WORKSPACE_ID_HERE  # Found in workspace on Toggl website
 report_file:  report.html        # No need to change

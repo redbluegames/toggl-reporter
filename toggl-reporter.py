@@ -4,6 +4,7 @@
 
 from __future__ import print_function
 from datetime import date, datetime
+from requests.auth import HTTPBasicAuth
 import getopt
 import iso8601
 import math
@@ -23,8 +24,8 @@ workspace = config['workspace']
 user_ids = config['reportees'].keys()
 since = ''
 until = ''
-api_key = config['api_key']
-headers = {'Authorization': api_key}
+api_token = config['api_token']
+headers = {}
 
 # API Endpoints
 GET_DETAILS = 'https://toggl.com/reports/api/v2/details'
@@ -99,7 +100,11 @@ def get_toggl_details_data():
 
 
 def get_toggl_details_response(payload, pageNum):
-    response = requests.get(GET_DETAILS, params=payload, headers=headers)
+    response = requests.get(GET_DETAILS, auth=(api_token, 'api_token'), params=payload, headers=headers)
+    print("Sending GET Request to: " + GET_DETAILS)
+    print("Headers:" + str(headers))
+    print("Payload: " + str(payload))
+    print("...")
     msg = "Getting report page {0} for user(s): {1}"
     print(msg.format(pageNum, payload['user_ids']))
 
