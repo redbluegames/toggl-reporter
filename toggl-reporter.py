@@ -64,13 +64,9 @@ def main(argv):
 
     togglData = get_toggl_details_data()
 
-    generate_report(togglData)
+    # Commenting out since this report is basically deprecated.
+    # generate_cortina_report(togglData)
 
-    # print "Validating entries..."
-    # validate_entries(response.json())
-
-    # print "\nDaily Report..."
-    # print_daily_report(response.json())
     outf.close
 
 
@@ -117,7 +113,7 @@ def get_toggl_details_response(payload, pageNum):
     return response
 
 
-def generate_report(response):
+def generate_cortina_report(response):
     summary_url = SUMMARY_URL.format(workspace, since,
                                      until, payload['user_ids'])
     output = "<html>"
@@ -140,40 +136,6 @@ def generate_report(response):
         write_billable_time_to_file(billableTime, reportees[user], outf)
 
     print("</html>", file=outf)
-
-
-def validate_entries(togglData):
-    for entry in togglData:
-        entryStartTime = iso8601.parse_date(entry['start'])
-        entryEndTime = iso8601.parse_date(entry['end'])
-        for otherentry in togglData:
-            otherStartTime = iso8601.parse_date(otherentry['start'])
-            otherEndTime = iso8601.parse_date(otherentry['end'])
-
-            startTimeOverlaps = (otherStartTime < entryEndTime and
-                                 otherStartTime > entryStartTime)
-            endTimeOverlaps = (otherEndTime < entryEndTime and
-                               otherStartTime > entryStartTime)
-
-            if entry == otherentry:
-                continue
-            elif startTimeOverlaps or endTimeOverlaps:
-                overlapMsg = ("Overlapping time entries found: " +
-                              "\n{0}\nand\n{1}")
-                print(overlapMsg.format(get_short_summary(entry),
-                                        get_short_summary(otherentry)))
-
-
-def print_daily_report(togglData):
-    earliestTime = None
-    for entry in togglData:
-        entryTime = iso8601.parse_date(entry['start'])
-        if (earliestTime is None or entryTime < earliestTime):
-            earliestTime = iso8601.parse_date(entry['start'])
-            earliestEntry = entry
-
-    print("Clocked in at {0}".format(earliestTime))
-    print("Entry: {0}".format(earliestEntry['description']))
 
 
 def get_billable_by_project(json, user_ids):
