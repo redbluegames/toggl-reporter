@@ -17,14 +17,11 @@ import yaml
 f = open('config.yaml')
 config = yaml.safe_load(f)
 f.close()
-outf = open(config['report_file'], 'w+')
 
 # Parameters for Toggl Request (from config file)
 user = config['user']
 workspace = config['workspace']
 user_ids = config['reportees'].keys()
-since = ''
-until = ''
 api_token = config['api_token']
 headers = {}
 
@@ -70,16 +67,28 @@ def main(argv):
     global summary_url
     summary_url = SUMMARY_URL.format(workspace, args.since, args.until, user_ids)
 
-    togglReport = get_toggl_details_json()
-
-    print(togglReport, file=outf)
+    togglDetails = get_toggl_details()
+    print_report_file(togglDetails)
 
     # Commenting out since this report is basically deprecated.
-    # generate_cortina_report(togglData)
+    # generate_cortina_report(togglDetails)
 
+
+def get_toggl_details():
+    if args.pdf:
+        togglDetails = get_toggl_details_pdf()
+    else:
+        togglDetails = get_toggl_details_json()
+    return togglDetails
+
+
+def print_report_file(reportContent):
+    if args.pdf:
+        outf = open('report.pdf', 'w+')
+    else:
+        outf = open('report.json', 'w+')
+    print(reportContent, file=outf)
     outf.close
-
-
 
 
 def get_toggl_details_pdf():
