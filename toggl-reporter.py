@@ -5,6 +5,7 @@
 from __future__ import print_function
 from datetime import date, datetime
 from requests.auth import HTTPBasicAuth
+import argparse
 import getopt
 import iso8601
 import math
@@ -27,8 +28,24 @@ until = ''
 api_token = config['api_token']
 headers = {}
 
+# Command Line Arguments
+parser = argparse.ArgumentParser(description=
+                "Generates a Toggl report using configuration file and " +
+                "provided parameters. ex: python toggl-reporter.py -vp " +
+                "2016-03-01 2016-03-15")
+parser.add_argument("since", help="start date in (YYYY-MM-DD) format")
+parser.add_argument("until", help="end date in (YYYY-MM-DD) format")
+parser.add_argument("-p", "--pdf",
+                    help="export pdf report instead of json",
+                    action="store_true")
+parser.add_argument("-v", "--verbose",
+                    help="increase output verbosity",
+                    action="store_true")
+args = parser.parse_args()
+
 # API Endpoints
 GET_DETAILS = 'https://toggl.com/reports/api/v2/details'
+GET_DETAILS_PDF = 'https://toggl.com/reports/api/v2/details.pdf'
 SUMMARY_URL = ("https://www.toggl.com/app/reports/summary/" +
                "{0}/from/{1}/to/{2}/users/{3}/billable/both")
 
@@ -39,30 +56,23 @@ ALL_EMPS = "All Employees"
 
 
 def main(argv):
-    if len(sys.argv) != 3:
-        print_usage()
-        sys.exit(2)
-
     # Set our request params
-    global since
-    since = sys.argv[1]
-    global until
-    until = sys.argv[2]
-
     global payload
     payload = {
         'user_agent': user,
         'workspace_id': workspace,
         'user_ids': ','.join(str(id) for id in user_ids),
-        'since': since,
-        'until': until,
+        'since': args.since,
+        'until': args.until,
         'page': 1
         }
 
     global summary_url
-    summary_url = SUMMARY_URL.format(workspace, since, until, user_ids)
+    summary_url = SUMMARY_URL.format(workspace, args.since, args.until, user_ids)
 
-    togglData = get_toggl_details_data()
+    togglReport = get_toggl_details_json()
+
+    print(togglReport, file=outf)
 
     # Commenting out since this report is basically deprecated.
     # generate_cortina_report(togglData)
@@ -70,17 +80,16 @@ def main(argv):
     outf.close
 
 
-def print_usage():
-    print("Usage: ")
-    print("py toggl-reporter.py [start_time] [end_time]")
-    print("  [start_time] beginning of report range in YYYY-MM-DD format")
-    print("  [end_time] beginning of report range in YYYY-MM-DD format")
-    print("\nex: python toggl-reporter.py 235725,572628 2016-03-01 2016-03-15")
 
 
-def get_toggl_details_data():
+def get_toggl_details_pdf():
+    response = get_toggl_details_response(GET_DETAILS_PDF, payload, pageNum=1)
+    return response.content
+
+
+def get_toggl_details_json():
     # Get first page
-    response = get_toggl_details_response(payload, 1)
+    response = get_toggl_details_response(GET_DETAILS, payload, 1)
     json = response.json()
     togglData = json['data']
 
@@ -92,15 +101,19 @@ def get_toggl_details_data():
             response = get_toggl_details_response(payload, nextPage)
             togglData += response.json()['data']
 
-    return togglData
+    return response.content
 
 
-def get_toggl_details_response(payload, pageNum):
-    response = requests.get(GET_DETAILS, auth=(api_token, 'api_token'), params=payload, headers=headers)
-    print("Sending GET Request to: " + GET_DETAILS)
-    print("Headers:" + str(headers))
-    print("Payload: " + str(payload))
-    print("...")
+def get_toggl_details_response(url, payload, pageNum):
+    if args.verbose:
+        print("Sending GET Request to: " + url)
+        print("Headers:" + str(headers))
+        print("Payload: " + str(payload))
+        print("...")
+
+    response = requests.get(url, auth=(api_token, 'api_token'),
+                            params=payload, headers=headers)
+
     msg = "Getting report page {0} for user(s): {1}"
     print(msg.format(pageNum, payload['user_ids']))
 
@@ -114,11 +127,11 @@ def get_toggl_details_response(payload, pageNum):
 
 
 def generate_cortina_report(response):
-    summary_url = SUMMARY_URL.format(workspace, since,
-                                     until, payload['user_ids'])
+    summary_url = SUMMARY_URL.format(workspace, args.since,
+                                     args.until, payload['user_ids'])
     output = "<html>"
     output += "\n<h2>Summary Timesheet Report for All Employees<br/>"
-    output += "\nfrom {0} to {1}</h2>".format(since, until)
+    output += "\nfrom {0} to {1}</h2>".format(args.since, args.until)
     output += ("\nA similar report for this date range can be viewed " +
                "<a href='{0}'>here</a>.<br/><br/>".format(summary_url))
     print(output, file=outf)
