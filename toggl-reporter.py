@@ -26,6 +26,7 @@ PARSER = argparse.ArgumentParser(description=
                                  "2016-03-01 2016-03-15")
 PARSER.add_argument("since", help="start date in (YYYY-MM-DD) format")
 PARSER.add_argument("until", help="end date in (YYYY-MM-DD) format")
+PARSER.add_argument("-c", "--client_ids", default=None, help="comma-separated list of client ids")
 PARSER.add_argument("-p", "--pdf",
                     help="export pdf report instead of json",
                     action="store_true")
@@ -54,6 +55,7 @@ def main():
         'user_ids': ','.join(str(id) for id in USER_IDS),
         'since': ARGS.since,
         'until': ARGS.until,
+        'client_ids': ARGS.client_ids,
         'page': 1
         }
 
