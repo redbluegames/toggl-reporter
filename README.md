@@ -41,6 +41,10 @@ To generate a PDF report...
 
     python toggl-reporter.py -p <since> <until>
 
+To generate a PDF report for specific clients...
+
+    python toggl-reporter.py -pvc CLIENTIDHERE,CLIENTIDHERE 2017-05-01 2017-05-30
+
 To send a report via email...
 
     python send-mail.py
